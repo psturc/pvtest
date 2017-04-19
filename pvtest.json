@@ -1,0 +1,158 @@
+{
+  "apiVersion": "v1",
+  "kind": "Template",
+  "metadata": {
+    "creationTimestamp": null,
+    "name": "pvtest-template"
+  },
+  "objects": [
+    {
+      "apiVersion": "v1",
+      "kind": "ImageStream",
+      "metadata": {
+        "name": "pvtest"
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "BuildConfig",
+      "metadata": {
+        "name": "pvtest"
+      },
+      "spec": {
+        "output": {
+          "to": {
+            "kind": "ImageStreamTag",
+            "name": "pvtest:latest"
+          }
+        },
+        "runPolicy": "SerialLatestOnly",
+        "source": {
+          "git": {
+            "ref": "master",
+            "uri": "https://github.com/psturc/pvtest"
+          },
+          "type": "Git"
+        },
+        "strategy": {
+          "sourceStrategy": {
+            "from": {
+              "kind": "ImageStreamTag",
+              "name": "nodejs:4",
+              "namespace": "openshift"
+            }
+          },
+          "type": "Source"
+        },
+        "triggers": [
+          {
+          "type": "ConfigChange"
+          }
+        ]
+      },
+      "status": {
+        "lastVersion": 0
+      }
+    },
+    {
+      "apiVersion": "v1",
+      "kind": "DeploymentConfig",
+      "metadata": {
+        "name": "pvtest"
+      },
+      "spec": {
+        "replicas": 1,
+        "strategy": {
+          "type": "Rolling"
+        },
+        "template": {
+          "metadata": {
+            "name": "pvtest"
+          },
+          "spec": {
+            "containers": [
+              {
+                "env": [
+                  {
+                    "name": "PATH_TO_TESTFILE",
+                    "value": "/var/log/node/testfile"
+                  },
+                  {
+                    "name": "PORT",
+                    "value": "8080"
+                  }
+                ],
+                "image": "pvtest",
+                "imagePullPolicy": "Always",
+                "name": "pvtest",
+                "ports": [
+                  {
+                    "containerPort": 8080,
+                    "protocol": "TCP"
+                  }
+                ],
+                "resources": {},
+                "terminationMessagePath": "/dev/termination-log",
+                "volumeMounts": [
+                  {
+                    "mountPath": "/var/log/node",
+                    "name": "node-data-volume"
+                  }
+                ]
+              }
+            ],
+            "dnsPolicy": "ClusterFirst",
+            "restartPolicy": "Always",
+            "securityContext": {},
+            "terminationGracePeriodSeconds": 30,
+            "volumes": [
+              {
+                "name": "node-data-volume",
+                "persistentVolumeClaim": {
+                  "claimName": "nodestorage"
+                }
+              }
+            ]
+          }
+        },
+        "test": false,
+        "triggers": [
+          {
+            "type": "ConfigChange"
+          },
+          {
+            "imageChangeParams": {
+              "automatic": true,
+              "containerNames": [
+                "pvtest"
+              ],
+              "from": {
+                "kind": "ImageStreamTag",
+                "name": "pvtest:latest"
+              }
+            },
+            "type": "ImageChange"
+          }
+        ]
+      }
+    },
+
+    {
+      "kind": "PersistentVolumeClaim",
+      "apiVersion": "v1",
+      "metadata": {
+        "name": "nodestorage"
+      },
+      "spec": {
+        "accessModes": [
+          "ReadWriteOnce"
+        ],
+        "resources": {
+          "requests": {
+            "storage": "1Gi"
+          }
+        }
+      }
+    }
+  ]
+}
