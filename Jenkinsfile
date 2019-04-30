@@ -4,7 +4,7 @@ node('nodejs') {
         checkout scm
   }
   stage('install') {
-    sh 'echo hello there..'
+    sh 'echo hello there.. test'
     sh 'npm install'
   }
 }
